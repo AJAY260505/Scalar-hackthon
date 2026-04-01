@@ -21,14 +21,15 @@ class Reward(BaseModel):
 class EmailEnv:
 
     def __init__(self):
+
         with open("dataset/emails.json") as f:
             self.data = json.load(f)
 
-        self.index = 0
         self.current_email = None
 
+
     def reset(self):
-        self.index = 0
+
         self.current_email = random.choice(self.data)
 
         return Observation(
@@ -36,20 +37,34 @@ class EmailEnv:
             email_id=self.current_email["id"]
         )
 
+
     def step(self, action: Action):
 
         score = 0
 
+        # category is most important
         if action.category == self.current_email["category"]:
-            score += 0.33
+            score += 0.4
+        else:
+            score -= 0.05   # small penalty
 
+
+        # priority importance
         if action.priority == self.current_email["priority"]:
-            score += 0.33
+            score += 0.3
 
+
+        # action correctness
         if action.action == self.current_email["action"]:
-            score += 0.34
+            score += 0.3
+
+
+        # keep score between 0 and 1
+        score = max(0, min(score, 1))
+
 
         done = True
+
 
         return {
             "observation": None,
@@ -58,5 +73,7 @@ class EmailEnv:
             "info": {}
         }
 
+
     def state(self):
+
         return self.current_email
