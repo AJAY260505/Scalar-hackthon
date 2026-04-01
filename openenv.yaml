@@ -1,0 +1,63 @@
+name: email-triage-openenv
+
+description: >
+  OpenEnv environment simulating real-world email triage workflow.
+  Agent must classify email category, assign priority, and choose correct action.
+
+version: 1.0
+
+authors:
+  - Ajay
+
+observation_space:
+  type: object
+  properties:
+    email_text:
+      type: string
+    email_id:
+      type: integer
+
+action_space:
+  type: object
+
+  properties:
+
+    category:
+      type: string
+      enum:
+        - billing
+        - technical
+        - account
+        - general
+
+    priority:
+      type: string
+      enum:
+        - low
+        - medium
+        - high
+
+    action:
+      type: string
+      enum:
+        - reply
+        - archive
+        - escalate
+
+reward:
+
+  type: float
+
+  min: 0.0
+  max: 1.0
+
+tasks:
+
+  - name: easy
+    description: classify email category
+
+  - name: medium
+    description: classify category and priority
+
+  - name: hard
+    description: classify category priority and action

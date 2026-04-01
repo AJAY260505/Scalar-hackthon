@@ -6,36 +6,53 @@ from tasks.hard_task import run_hard_task
 
 def simple_agent(email_text):
 
-    email_text = email_text.lower()
+    text = email_text.lower()
 
-    if "refund" in email_text or "charged" in email_text:
+    # billing related
+    if any(word in text for word in [
+        "refund","charged","invoice","payment",
+        "transaction","price","billing","amount"
+    ]):
         return Action(
             category="billing",
             priority="high",
             action="escalate"
         )
 
-    if "password" in email_text:
+    # technical issues
+    if any(word in text for word in [
+        "password","error","bug","crash",
+        "login","server","issue","problem"
+    ]):
         return Action(
             category="technical",
-            priority="medium",
-            action="reply"
-        )
-
-    if "cancel" in email_text:
-        return Action(
-            category="account",
             priority="high",
             action="escalate"
         )
 
-    if "thank" in email_text:
+    # account related
+    if any(word in text for word in [
+        "account","profile","delete",
+        "remove","update","change"
+    ]):
+        return Action(
+            category="account",
+            priority="medium",
+            action="reply"
+        )
+
+    # positive / feedback emails
+    if any(word in text for word in [
+        "thank","great","love","good",
+        "awesome","nice"
+    ]):
         return Action(
             category="general",
             priority="low",
             action="archive"
         )
 
+    # default fallback
     return Action(
         category="general",
         priority="medium",
@@ -43,10 +60,13 @@ def simple_agent(email_text):
     )
 
 
+# run tasks
 easy_score = run_easy_task(simple_agent)
 medium_score = run_medium_task(simple_agent)
 hard_score = run_hard_task(simple_agent)
 
+
+# print results
 print("\nRESULTS")
 print("Easy Task Score:", easy_score)
 print("Medium Task Score:", medium_score)
