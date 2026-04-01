@@ -91,3 +91,14 @@ HR communication
 finance operations  
 
 Automating this process improves efficiency and reduces manual workload.
+=======
+---
+title: Email Triage Openenv
+emoji: 🔥
+colorFrom: red
+colorTo: indigo
+sdk: docker
+pinned: false
+license: mit
+short_description: An AI agent processes incoming emails and predicts
+---
