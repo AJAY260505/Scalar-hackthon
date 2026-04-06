@@ -1,0 +1,35 @@
+version = 1
+requires-python = ">=3.10"
+
+[[package]]
+name = "fastapi"
+version = "0.104.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/fastapi-0.104.1.tar.gz", hash = "sha256:7671072f7cc80fbc65d9cbef1e248e67fea4628bd793a38164032b4f7ce63331" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fastapi-0.104.1-py3-none-any.whl", hash = "sha256:7671072f7cc80fbc65d9cbef1e248e67fea4628bd793a38164032b4f7ce63331" },
+]
+dependencies = [
+    { name = "pydantic", version = ">=2.0" },
+    { name = "starlette", version = ">=0.27.0" },
+]
+
+[[package]]
+name = "uvicorn"
+version = "0.24.0"
+source = { registry = "https://pypi.org/simple" }
+
+[[package]]
+name = "pydantic"
+version = "2.5.0"
+source = { registry = "https://pypi.org/simple" }
+
+[[package]]
+name = "python-dotenv"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+
+[[package]]
+name = "openai"
+version = "1.3.0"
+source = { registry = "https://pypi.org/simple" }
