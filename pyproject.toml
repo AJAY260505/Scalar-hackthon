@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "email-triage-openenv"
+version = "1.0.0"
+description = "OpenEnv environment for email triage with RL agent"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Ajay", email = "ajay260505@gmail.com"}
+]
+
+dependencies = [
+    "fastapi==0.104.1",
+    "uvicorn==0.24.0",
+    "pydantic==2.5.0",
+    "python-dotenv==1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/AJAYPHOENIX/Scalar-hackathon"
+Repository = "https://github.com/AJAYPHOENIX/Scalar-hackathon"
+
+[tool.setuptools]
+packages = ["tasks"]
