@@ -5,10 +5,21 @@ from tasks.medium_task import run_medium_task
 from tasks.hard_task import run_hard_task
 import random
 
-# Environment variables
+# Required environment variables with proper defaults
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-3.5-turbo")
 HF_TOKEN = os.getenv("HF_TOKEN", "")
+
+# Initialize OpenAI client (required by problem statement)
+try:
+    from openai import OpenAI
+    client = OpenAI(
+        api_key=os.getenv("OPENAI_API_KEY", "sk-dummy"),
+        base_url=API_BASE_URL
+    )
+except Exception as e:
+    # Fallback if OpenAI is not available
+    client = None
 
 Q_TABLE = {}
 ACTION_SPACE = [
@@ -94,13 +105,9 @@ if __name__ == "__main__":
     medium_score = run_medium_task(rl_agent)
     hard_score = run_hard_task(rl_agent)
     
-    # EXACT OUTPUT FORMAT - No deviations!
+    # EXACT OUTPUT FORMAT - Required structured logging
     print("[START]")
     print(f"[STEP] task=easy score={easy_score}")
     print(f"[STEP] task=medium score={medium_score}")
     print(f"[STEP] task=hard score={hard_score}")
     print("[END]")
-
-
-
-### 6. **Create .gitignore**
