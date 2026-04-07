@@ -5,21 +5,15 @@ from tasks.medium_task import run_medium_task
 from tasks.hard_task import run_hard_task
 import random
 
-# Required environment variables with proper defaults
-API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-3.5-turbo")
-HF_TOKEN = os.getenv("HF_TOKEN", "")
+# Required environment variables - MUST use these
+API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
+API_KEY = os.environ.get("API_KEY", "sk-default")
+MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-3.5-turbo")
+HF_TOKEN = os.environ.get("HF_TOKEN", "")
 
-# Initialize OpenAI client (required by problem statement)
-try:
-    from openai import OpenAI
-    client = OpenAI(
-        api_key=os.getenv("OPENAI_API_KEY", "sk-dummy"),
-        base_url=API_BASE_URL
-    )
-except Exception as e:
-    # Fallback if OpenAI is not available
-    client = None
+# Initialize OpenAI client with provided credentials
+from openai import OpenAI
+client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
 Q_TABLE = {}
 ACTION_SPACE = [
@@ -50,6 +44,51 @@ def get_state(email_text):
     
     return "general"
 
+def classify_with_llm(email_text):
+    """
+    Use OpenAI client to classify email via LLM.
+    This ensures API_BASE_URL and API_KEY are used.
+    """
+    try:
+        prompt = f"""Classify this email into ONE of these categories: billing, technical, account, or general.
+Also assign priority (low, medium, high) and action (reply, escalate, archive).
+
+Email: {email_text}
+
+Respond in this exact format:
+category: [billing|technical|account|general]
+priority: [low|medium|high]
+action: [reply|escalate|archive]"""
+        
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": "You are an email classification expert."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.0,
+            max_tokens=100
+        )
+        
+        text = response.choices[0].message.content.strip()
+        
+        # Parse response
+        lines = text.split('\n')
+        result = {}
+        for line in lines:
+            if 'category:' in line.lower():
+                result['category'] = line.split(':')[1].strip().lower()
+            elif 'priority:' in line.lower():
+                result['priority'] = line.split(':')[1].strip().lower()
+            elif 'action:' in line.lower():
+                result['action'] = line.split(':')[1].strip().lower()
+        
+        return result
+    except Exception as e:
+        # Fallback to rule-based if API fails
+        print(f"[DEBUG] LLM classification failed: {e}", flush=True)
+        return None
+
 def choose_action(state):
     if random.random() < EXPLORATION_RATE:
         return random.choice(ACTION_SPACE)
@@ -79,7 +118,15 @@ def train_agent(episodes=50):
     for _ in range(episodes):
         obs = env.reset()
         state = get_state(obs.email_text)
-        action_dict = choose_action(state)
+        
+        # Try LLM classification first (uses API)
+        llm_result = classify_with_llm(obs.email_text)
+        if llm_result and all(k in llm_result for k in ['category', 'priority', 'action']):
+            action_dict = llm_result
+        else:
+            # Fallback to rule-based
+            action_dict = choose_action(state)
+        
         action = Action(**action_dict)
         result = env.step(action)
         reward = result["reward"]
@@ -88,12 +135,18 @@ def train_agent(episodes=50):
 def rl_agent(email_text):
     state = get_state(email_text)
     
-    if state in Q_TABLE:
-        best_action_key = max(Q_TABLE[state], key=Q_TABLE[state].get)
-        action_dict = eval(best_action_key)
-        return Action(**action_dict)
+    # Try LLM classification first (uses API)
+    llm_result = classify_with_llm(email_text)
+    if llm_result and all(k in llm_result for k in ['category', 'priority', 'action']):
+        action_dict = llm_result
+    else:
+        # Fallback to Q-table or random
+        if state in Q_TABLE:
+            best_action_key = max(Q_TABLE[state], key=Q_TABLE[state].get)
+            action_dict = eval(best_action_key)
+        else:
+            action_dict = random.choice(ACTION_SPACE)
     
-    action_dict = random.choice(ACTION_SPACE)
     return Action(**action_dict)
 
 if __name__ == "__main__":
