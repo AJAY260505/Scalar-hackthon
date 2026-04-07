@@ -12,8 +12,16 @@ MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-3.5-turbo")
 HF_TOKEN = os.environ.get("HF_TOKEN", "")
 
 # Initialize OpenAI client with provided credentials
-from openai import OpenAI
-client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+try:
+    from openai import OpenAI
+    # Initialize without proxies to avoid conflicts
+    client = OpenAI(
+        api_key=API_KEY,
+        base_url=API_BASE_URL
+    )
+except Exception as e:
+    print(f"[DEBUG] Failed to initialize OpenAI client: {e}", flush=True)
+    client = None
 
 Q_TABLE = {}
 ACTION_SPACE = [
@@ -49,6 +57,9 @@ def classify_with_llm(email_text):
     Use OpenAI client to classify email via LLM.
     This ensures API_BASE_URL and API_KEY are used.
     """
+    if client is None:
+        return None
+    
     try:
         prompt = f"""Classify this email into ONE of these categories: billing, technical, account, or general.
 Also assign priority (low, medium, high) and action (reply, escalate, archive).
@@ -77,13 +88,21 @@ action: [reply|escalate|archive]"""
         result = {}
         for line in lines:
             if 'category:' in line.lower():
-                result['category'] = line.split(':')[1].strip().lower()
+                cat = line.split(':')[1].strip().lower()
+                if cat in ['billing', 'technical', 'account', 'general']:
+                    result['category'] = cat
             elif 'priority:' in line.lower():
-                result['priority'] = line.split(':')[1].strip().lower()
+                pri = line.split(':')[1].strip().lower()
+                if pri in ['low', 'medium', 'high']:
+                    result['priority'] = pri
             elif 'action:' in line.lower():
-                result['action'] = line.split(':')[1].strip().lower()
+                act = line.split(':')[1].strip().lower()
+                if act in ['reply', 'escalate', 'archive']:
+                    result['action'] = act
         
-        return result
+        if 'category' in result and 'priority' in result and 'action' in result:
+            return result
+        return None
     except Exception as e:
         # Fallback to rule-based if API fails
         print(f"[DEBUG] LLM classification failed: {e}", flush=True)
@@ -121,23 +140,27 @@ def train_agent(episodes=50):
         
         # Try LLM classification first (uses API)
         llm_result = classify_with_llm(obs.email_text)
-        if llm_result and all(k in llm_result for k in ['category', 'priority', 'action']):
+        if llm_result:
             action_dict = llm_result
         else:
             # Fallback to rule-based
             action_dict = choose_action(state)
         
-        action = Action(**action_dict)
-        result = env.step(action)
-        reward = result["reward"]
-        update_q(state, action_dict, reward)
+        try:
+            action = Action(**action_dict)
+            result = env.step(action)
+            reward = result["reward"]
+            update_q(state, action_dict, reward)
+        except Exception as e:
+            print(f"[DEBUG] Training step failed: {e}", flush=True)
+            continue
 
 def rl_agent(email_text):
     state = get_state(email_text)
     
     # Try LLM classification first (uses API)
     llm_result = classify_with_llm(email_text)
-    if llm_result and all(k in llm_result for k in ['category', 'priority', 'action']):
+    if llm_result:
         action_dict = llm_result
     else:
         # Fallback to Q-table or random
@@ -147,20 +170,33 @@ def rl_agent(email_text):
         else:
             action_dict = random.choice(ACTION_SPACE)
     
-    return Action(**action_dict)
+    try:
+        return Action(**action_dict)
+    except Exception as e:
+        print(f"[DEBUG] Action creation failed: {e}", flush=True)
+        return Action(category="general", priority="medium", action="reply")
 
 if __name__ == "__main__":
-    # Training phase
-    train_agent()
-    
-    # Evaluation phase
-    easy_score = run_easy_task(rl_agent)
-    medium_score = run_medium_task(rl_agent)
-    hard_score = run_hard_task(rl_agent)
-    
-    # EXACT OUTPUT FORMAT - Required structured logging
-    print("[START]")
-    print(f"[STEP] task=easy score={easy_score}")
-    print(f"[STEP] task=medium score={medium_score}")
-    print(f"[STEP] task=hard score={hard_score}")
-    print("[END]")
+    try:
+        # Training phase
+        train_agent()
+        
+        # Evaluation phase
+        easy_score = run_easy_task(rl_agent)
+        medium_score = run_medium_task(rl_agent)
+        hard_score = run_hard_task(rl_agent)
+        
+        # EXACT OUTPUT FORMAT - Required structured logging
+        print("[START]")
+        print(f"[STEP] task=easy score={easy_score}")
+        print(f"[STEP] task=medium score={medium_score}")
+        print(f"[STEP] task=hard score={hard_score}")
+        print("[END]")
+    except Exception as e:
+        print(f"[ERROR] Inference failed: {e}", flush=True)
+        print("[START]")
+        print("[STEP] task=easy score=0.0")
+        print("[STEP] task=medium score=0.0")
+        print("[STEP] task=hard score=0.0")
+        print("[END]")
+        raise
