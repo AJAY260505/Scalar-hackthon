@@ -3,26 +3,28 @@ from environment import EmailEnv
 def run_easy_task(agent):
     """
     Easy: Classify email category only
-    Scores must be strictly between 0.0 and 1.0
+    Scores must be strictly between 0.0 and 1.0 (exclusive)
     """
     env = EmailEnv()
-    total_score = 0
-    n = 10  # Increased from 5 to 10 for better score distribution
+    correct = 0
+    total = 10
     
-    for _ in range(n):
+    for _ in range(total):
         observation = env.reset()
         action = agent(observation.email_text)
         
-        # Category is most important (0.8 weight)
         if action.category == env.current_email["category"]:
-            score = 0.8
-        else:
-            score = 0.1  # Minimum non-zero penalty
-        
-        total_score += score
+            correct += 1
     
-    # Clamp to ensure strictly between 0 and 1 (never exactly 0 or 1)
-    avg_score = total_score / n
-    avg_score = min(max(avg_score, 0.01), 0.99)  # Clamp to [0.01, 0.99]
+    # Convert to score: correct/total
+    base_score = correct / total
     
-    return round(avg_score, 2)
+    # Add epsilon (0.001) to shift away from boundaries
+    # This ensures we never return exactly 0.0 or 1.0
+    epsilon = 0.001
+    score = base_score * (1 - 2 * epsilon) + epsilon
+    
+    # Clamp to ensure strictly between 0 and 1
+    score = min(max(score, 0.01), 0.99)
+    
+    return round(score, 2)
