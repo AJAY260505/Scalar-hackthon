@@ -1,5 +1,8 @@
 from fastapi import FastAPI
 from environment import EmailEnv, Action
+from tasks.easy_task import run_easy_task
+from tasks.medium_task import run_medium_task
+from tasks.hard_task import run_hard_task
 
 app = FastAPI()
 
@@ -38,6 +41,43 @@ def home():
     return {"status": "ready"}
 
 
+@app.get("/inference")
+def run_inference():
+    """Run inference and return task scores"""
+    try:
+        easy_score = run_easy_task(simple_agent)
+        medium_score = run_medium_task(simple_agent)
+        hard_score = run_hard_task(simple_agent)
+        
+        return {
+            "status": "success",
+            "tasks": {
+                "easy": easy_score,
+                "medium": medium_score,
+                "hard": hard_score
+            },
+            "output": {
+                "START": True,
+                "STEP": [
+                    {"task": "easy", "score": easy_score},
+                    {"task": "medium", "score": medium_score},
+                    {"task": "hard", "score": hard_score}
+                ],
+                "END": True
+            }
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "tasks": {
+                "easy": 0.0,
+                "medium": 0.0,
+                "hard": 0.0
+            }
+        }
+
+
 @app.post("/reset")
 def reset_env():
     """Reset environment and return observation"""
@@ -56,3 +96,13 @@ def step_env(action: Action):
         "reward": result["reward"],
         "done": result["done"]
     }
+
+
+def main():
+    """Main entry point for the server"""
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=7860)
+
+
+if __name__ == "__main__":
+    main()
